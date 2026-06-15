@@ -1,4 +1,5 @@
 -- Hilbish init.lua
+
 local hilbish = require 'hilbish'
 local commander = require 'commander'
 local lunacolors = require 'lunacolors'
@@ -10,12 +11,41 @@ local lunacolors = require 'lunacolors'
 -- personalizzata, il modo migliore per averla su Hilbish è usare il
 -- comando universale di starship. Hilbish adatterà nativamente
 -- i colori del tuo terminale!
--- In Hilbish 2.x hilbish.prompt accetta solo una stringa fissa o formattata, non una funzione.
--- Abbiamo creato una replica fedele (e super veloce) del tuo starship nativamente in Lua!
-hilbish.prompt(
-    lunacolors.cyan("[NixOS]") .. lunacolors.blue("%u") .. lunacolors.magenta(" : ") ..
-    lunacolors.blue("%h ") .. lunacolors.cyan("%D") .. "\n" .. lunacolors.green("⊢ ")
-)
+-- In Hilbish 2.x il prompt prende una stringa formattata.
+-- Creiamo una funzione che calcola dinamicamente il branch Git o Fossil
+-- e aggiorna la stringa del prompt, in modo da avere le stesse info di Starship!
+-- Usiamo il modulo bait per intercettare gli eventi della shell!
+local bait = require 'bait'
+
+local function update_prompt()
+    local exit_code = hilbish.exitCode or 0
+    -- Eseguiamo starship per generare il prompt completo
+    local f = io.popen("starship prompt --status=" .. tostring(exit_code) .. " --cmd-duration=0 --jobs=0")
+    if f then
+        local p = f:read("*a")
+        f:close()
+        if p and p ~= "" then
+            -- Rimuoviamo gli escape sequenziali bash specifici (\[ e \])
+            -- lasciando intatti i veri codici ANSI (\x1b) per i colori!
+            p = p:gsub("\\%[", ""):gsub("\\%]", "")
+            hilbish.prompt(p)
+            return
+        end
+    end
+
+    -- Fallback di sicurezza in caso Starship fallisca
+    hilbish.prompt(
+        lunacolors.cyan("[NixOS]") .. lunacolors.blue("%u") .. lunacolors.magenta(" : ") ..
+        lunacolors.blue("%h ") .. lunacolors.cyan("%D") .. "\n" .. lunacolors.green("⊢ ")
+    )
+end
+
+-- Genera il primo prompt all'avvio
+update_prompt()
+
+-- Aggiorna dinamicamente il prompt ad ogni cambio cartella o comando eseguito
+bait.catch('cd', update_prompt)
+bait.catch('command.exit', update_prompt)
 
 -- =====================================================================
 -- 2. SHELL OPTIONS E HISTORY
