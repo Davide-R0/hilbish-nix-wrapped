@@ -42,7 +42,7 @@
       relPath = "${config.binName}-init.lua";
       content = ''
         package.preload["nix-info"] = function()
-          return setmetatable(${lib.generators.toLua { } config.luaInfo}, {
+          return setmetatable(${lib.generators.toLua { } config.settings}, {
             __call = function(self, default, ...)
               if select('#', ...) == 0 then return default end
               local tbl = self;
@@ -54,7 +54,7 @@
             end
           })
         end
-        
+
         -- Load the actual user config
         local user_config = dofile(${builtins.toJSON config."hilbish.lua".path})
         return user_config

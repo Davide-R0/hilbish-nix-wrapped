@@ -1,9 +1,7 @@
 {
   config,
-  wlib,
   lib,
   pkgs,
-  options,
   ...
 }:
 {
@@ -40,9 +38,11 @@
     };
 
     "hilbish.lua".path = ./init.lua;
-    runtimePkgs = [
-      pkgs.eza
-      pkgs.bat
+
+    runtimePkgs = with pkgs; [
+      eza
+      bat
+      zoxide
     ];
   };
 }

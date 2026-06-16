@@ -120,7 +120,26 @@ update_prompt()
 
 -- Aggiorna dinamicamente il prompt ad ogni cambio cartella o comando eseguito
 bait.catch('cd', update_prompt)
+
 bait.catch('command.exit', update_prompt)
+
+-- =====================================================================
+-- ZOXIDE INTEGRATION
+-- =====================================================================
+-- Zoxide genera codice Lua nativo per Hilbish. Lo leggiamo e lo eseguiamo.
+local f_zox = io.popen("zoxide init hilbish --cmd cd 2>/dev/null") -- in automatico crea l'alias per cd e cdi
+if f_zox then
+    local zoxide_code = f_zox:read("*a")
+    f_zox:close()
+    if zoxide_code and zoxide_code ~= "" then
+        local chunk, err = load(zoxide_code)
+        if chunk then
+            chunk()
+        else
+            print("Errore nel caricamento di zoxide: " .. tostring(err))
+        end
+    end
+end
 
 -- =====================================================================
 -- 2. SHELL OPTIONS E HISTORY
@@ -405,17 +424,105 @@ commander.register('y', function(args)
 end)
 
 -- Options
---hilbish.opts.fuzzy = true
---hilbish.editor.vimMode(true)
+hilbish.opts.fuzzy = true -- via the menu in Ctrl-R
+--hilbish.inputMode.vimMode = "vim" -- non ho capito cosa è questa impostazione
+--hilbish.inputMode("vim")
 
 -- Nelle nuove versioni di Hilbish, highlighter prende una stringa col nome del linguaggio
 -- (es: "sh") invece di una funzione.
-pcall(function()
-    hilbish.highlighter("sh")
-end)
+--pcall(function()
+--    hilbish.highlighter("sh")
+--end)
+
+
+-- =====================================================================
+-- CUSTOM SYNTAX HIGHLIGHTING
+-- =====================================================================
+function hilbish.highlighter(line)
+    local highlighted = line
+
+    -- 1. Evidenzia le stringhe ("..." e '...') in Verde
+    highlighted = highlighted:gsub('"[^"]*"', function(match)
+        return lunacolors.green(match)
+    end)
+    highlighted = highlighted:gsub("'[^']*'", function(match)
+        return lunacolors.green(match)
+    end)
+
+    -- 2. Evidenzia i numeri in Giallo
+    highlighted = highlighted:gsub("%f[%w]%d+%f[%W]", function(match)
+        return lunacolors.yellow(match)
+    end)
+
+    -- 3. Evidenzia i flag (es. --help, -v) in Magenta
+    highlighted = highlighted:gsub("%s%-%a+", function(match)
+        return lunacolors.magenta(match)
+    end)
+    highlighted = highlighted:gsub("%s%-%-%a+", function(match)
+        return lunacolors.magenta(match)
+    end)
+
+    -- 4. Ricerca dinamica del comando (la prima parola della riga)
+    -- Catturiamo la prima parola della riga digitata
+    local first_word = line:match("^%s*(%S+)")
+
+    if first_word then
+        local is_valid = false
+
+        -- Controlla se è un Alias
+        if hilbish.aliases and hilbish.aliases[first_word] then
+            is_valid = true
+            -- Controlla se è un comando built-in o un eseguibile nel $PATH
+        elseif hilbish.which(first_word) ~= nil then
+            is_valid = true
+            -- (Opzionale) Aggiungi qui comandi built-in fissi se hilbish.which non li rileva
+        elseif first_word == "cd" or first_word == "exit" then
+            is_valid = true
+        end
+
+        -- Se il comando è valido, colora la prima parola di Ciano
+        -- Se NON è valido (comando inesistente), colorala di Rosso
+        local color_func = is_valid and lunacolors.cyan or lunacolors.red
+
+        -- Sostituiamo SOLO la prima occorrenza (il comando) nella stringa finale
+        -- Usiamo una regex che matcha l'inizio della riga seguito dalla parola
+        highlighted = highlighted:gsub("^(%s*)" .. first_word:gsub("%p", "%%%0"), "%1" .. color_func(first_word), 1)
+    end
+
+    -- FIXME: non sembra funzionare bene...
+    -- 5. Evidenzia i percorsi (paths) sottolineandoli
+    -- Cerca parole che iniziano con /, ./, ../ o ~/ o contengono un / a metà parola
+    highlighted = highlighted:gsub("%f[%S]([~%.%/][%w%-_%.%/]+)%f[%s]", function(match)
+        return lunacolors.underline(match)
+    end)
+    highlighted = highlighted:gsub("%f[%S]([%w%-_%.]+/[%w%-_%.%/]*)%f[%s]", function(match)
+        return lunacolors.underline(match)
+    end)
+
+    return highlighted
+end
+
+-- this will display "hi" after the cursor in a dimmed color.
+--function hilbish.hinter(line, pos)
+--    return 'hi'
+--end
 
 -- Nota: zoxide per hilbish può essere inizializzato nativamente
 -- chiamando: eval "$(zoxide init hilbish)"
 -- Hilbish supporta questo tramite hilbish.run se zoxide supporta hilbish,
 -- o scrivendo una funzione hook dedicata.
 -- Ma per ora, zoxide e fzf vengono integrati tramite plugin Hilbish.
+
+--[[
+imagine this is your text input:
+user ~ ∆ echo "hey
+but there's a missing quote! hilbish will now prompt you so the terminal
+will look like:
+user ~ ∆ echo "hey
+--> ...!"
+so then you get
+user ~ ∆ echo "hey
+--> ...!"
+hey ...!
+]] --
+hilbish.multiprompt '-->'

@@ -1,0 +1,4 @@
+# Lua LSP configuraiton file
+std = "hilbish"
+[config]
+globals = ["hilbish", "require"]

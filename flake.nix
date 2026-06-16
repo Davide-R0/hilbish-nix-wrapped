@@ -50,7 +50,7 @@
         };
 
         overlays = {
-          hilbish = final: prev: { hilbish = self.wrappers.hilbish.wrap { pkgs = final; }; };
+          hilbish = final: _: { hilbish = self.wrappers.hilbish.wrap { pkgs = final; }; };
           default = self.overlays.hilbish;
         };
       };
