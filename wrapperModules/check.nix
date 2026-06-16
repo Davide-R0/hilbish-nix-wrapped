@@ -11,7 +11,7 @@ let
     }).wrapper;
 in
 pkgs.runCommand "hilbish-test" { } ''
-  # the -V flag prints the version and exits, which is enough to check if it's runnable
-  ${wrapped}/bin/hilbish -V > /dev/null
+  # the -v flag prints the version and exits, which is enough to check if it's runnable
+  ${wrapped}/bin/hilbish -v > /dev/null
   touch $out
 ''

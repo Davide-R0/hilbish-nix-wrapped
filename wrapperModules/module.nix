@@ -42,7 +42,7 @@
       relPath = "${config.binName}-init.lua";
       content = ''
         package.preload["nix-info"] = function()
-          return setmetatable(${lib.generators.toLua { } config.settings}, {
+          return setmetatable(${lib.generators.toLua { } config.luaInfo}, {
             __call = function(self, default, ...)
               if select('#', ...) == 0 then return default end
               local tbl = self;

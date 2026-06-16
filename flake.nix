@@ -25,13 +25,15 @@
       systems = nixpkgs.lib.platforms.all;
 
       perSystem =
-        { config, ... }:
+        { config, pkgs, ... }:
         {
           packages.default = config.packages.hilbish;
+          checks.default = import ./wrapperModules/check.nix { inherit pkgs self; }; # NOTE: per fare i checks
         };
 
       flake = {
         wrappers.hilbish = ./module.nix;
+        #wrapperModules.hilbish = ./wrapperModules/module.nix;
 
         nixosModules = {
           hilbish = wrappers.lib.getInstallModule {
