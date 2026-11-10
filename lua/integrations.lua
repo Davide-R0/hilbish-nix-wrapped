@@ -1,6 +1,26 @@
 local M = {}
 
 function M.apply(commander)
+    -- ---------------------------------
+    -- Autocompletamento con carpace
+    -- ---------------------------------
+    -- Inizializzazione del bridge dinamico per Carapace
+    -- Il comando '_carapace hilbish' istruisce il binario a stampare l'interprete di completamento in sintassi Lua
+    --local carapace_process = io.popen("carapace _carapace hilbish")
+
+    --if carapace_process then
+    --    -- Estrazione del buffer di output (codice sorgente) nel thread principale
+    --    local carapace_source = carapace_process:read("*a")
+    --    carapace_process:close()
+
+    --    -- Valutazione e compilazione a runtime (JIT) del codice generato, se presente
+    --    if carapace_source and carapace_source ~= "" then
+    --        local success, err = pcall(load(carapace_source))
+    --        if not success then
+    --            print("Errore critico durante la compilazione del modulo Carapace: " .. tostring(err))
+    --        end
+    --    end
+    --end
     -- =====================================================================
     -- ZOXIDE INTEGRATION
     -- =====================================================================

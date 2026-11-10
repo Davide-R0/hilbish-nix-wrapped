@@ -1,6 +1,55 @@
 local M = {}
 
-function M.apply(commander)
+function M.apply(commander, lunacolors)
+    commander.register('lunacolors-print', function()
+        -- Vettori primari dei colori e degli stili forniti dall'API
+        local colors = { 'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white' }
+        local styles = { 'bold', 'dim', 'italic', 'underline', 'invert' }
+
+        -- Funzione helper per rispettare il strict camelCase imposto dall'API
+        local function capitalize(str)
+            return string.upper(string.sub(str, 1, 1)) .. string.sub(str, 2)
+        end
+
+        print("================================================================================")
+        print(" LUNACOLORS - MATRICE DELLE VARIANTI CROMATICHE E STILISTICHE")
+        print("================================================================================")
+        -- Stampa degli header allineati a 20 caratteri
+        print(string.format("%-20s | %-20s | %-20s | %-20s", "Foreground", "Bright FG", "Background", "Bright BG"))
+        print("--------------------------------------------------------------------------------")
+
+        for _, color in ipairs(colors) do
+            local cColor = capitalize(color)
+
+            -- Derivazione procedurale delle chiavi funzione
+            local f      = color                      -- es. "red"
+            local bf     = "bright" .. cColor         -- es. "brightRed"
+            local b      = color .. "Bg"              -- es. "redBg"
+            local bb     = "bright" .. cColor .. "Bg" -- es. "brightRedBg"
+
+            -- Risoluzione dinamica delle funzioni dal modulo globale 'lunacolors'
+            -- Viene applicato preventivamente il padding string.format prima del wrapping ANSI
+            -- per preservare le metriche di allineamento del terminale.
+            local col1   = lunacolors[f](string.format("%-20s", f))
+            local col2   = lunacolors[bf](string.format("%-20s", bf))
+            local col3   = lunacolors[b](string.format("%-20s", b))
+            local col4   = lunacolors[bb](string.format("%-20s", bb))
+
+            -- Esecuzione dell'output concatenato per riga cromatica
+            print(string.format("%s | %s | %s | %s", col1, col2, col3, col4))
+        end
+
+        print("\n--------------------------------------------------------------------------------")
+        print(" LUNACOLORS - MODIFICATORI DI STILE (Applicati su testo di test)")
+        print("--------------------------------------------------------------------------------")
+
+        for _, style in ipairs(styles) do
+            -- Il modificatore 'reset' non è visibile isolato, quindi omesso dall'array testuale
+            -- ma viene automaticamente chiamato dalle macro lunacolors al termine della stringa
+            print(string.format("%-20s -> %s", style, lunacolors[style]("Rendering con " .. style)))
+        end
+        print("================================================================================\n")
+    end)
     -- =====================================================================
     -- 4. HYPRLAND HDMI MANAGER (Trasposto in puro LUA!)
     -- =====================================================================
@@ -170,7 +219,7 @@ function M.apply(commander)
                 local sub_del, rm_del
                 if target == "h" or target == "H" then
                     sub_del = os.execute("sudo btrfs subvolume delete '/home/.snapshots/" ..
-                    num .. "/snapshot' 2>/dev/null")
+                        num .. "/snapshot' 2>/dev/null")
                     rm_del = os.execute("sudo rm -rf '/home/.snapshots/" .. num .. "'")
                 else
                     sub_del = os.execute("sudo btrfs subvolume delete '/.snapshots/" .. num .. "/snapshot' 2>/dev/null")

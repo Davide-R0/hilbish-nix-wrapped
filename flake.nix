@@ -1,5 +1,6 @@
 {
   description = "Flake exporting a configured hilbish package";
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     wrappers = {

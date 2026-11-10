@@ -43,6 +43,7 @@
       eza
       bat
       zoxide
+      fish # Per l'autocompletamento
     ];
   };
 }

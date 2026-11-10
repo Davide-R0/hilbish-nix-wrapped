@@ -1,15 +1,44 @@
 local M = {}
 
 function M.apply(hilbish, lunacolors, bait)
-    -- Creiamo una funzione LUA PURA che emula la tua configurazione di Starship!
-    -- Niente più binari esterni, tutto eseguito a velocità nativa.
-    local function update_prompt()
-        local p = {} -- Conterrà i vari pezzi del prompt
+    -- Funzione di formattazione algoritmica del path
+    local function get_formatted_cwd(max_depth)
+        local cwd = hilbish.cwd()
+        local home = os.getenv('HOME')
+        if home and string.sub(cwd, 1, string.len(home)) == home then
+            cwd = "~" .. string.sub(cwd, string.len(home) + 1)
+        end
+        local parts = {}
+        for part in string.gmatch(cwd, "[^/]+") do
+            table.insert(parts, part)
+        end
+        if #parts == 0 then return "/" end
+        if #parts > max_depth then
+            local truncated = {}
+            for i = #parts - max_depth + 2, #parts do
+                table.insert(truncated, parts[i])
+            end
+            return "…/" .. table.concat(truncated, "/")
+        end
+        if string.sub(cwd, 1, 1) == "/" then
+            return "/" .. table.concat(parts, "/")
+        end
+        return table.concat(parts, "/")
+    end
 
-        -- 1. Base (NixOS, Utente, Host)
+    local function update_prompt()
+        local p = {}
+
+        -- 1. Base ` # NixOS (Utente : Host)`
         -- Usiamo %u per l'utente e %h per l'host per lasciare che Hilbish li risolva perfettamente!
-        table.insert(p, lunacolors.cyan("  NixOS") .. lunacolors.blue("%u"))
-        table.insert(p, lunacolors.magenta(" : ") .. lunacolors.blue("%h"))
+        table.insert(p, "\x1b[38;5;159m  NixOS \x1b[0m") --lunacolors.brightCyan("  NixOS "))
+        table.insert(p,
+            lunacolors.magenta("(") ..
+            lunacolors.bold(lunacolors.brightBlue("%u")) ..
+            lunacolors.magenta(" : ") ..
+            lunacolors.blue("%h") ..
+            lunacolors.magenta(")")
+        )
 
         -- 2. Modulo Git (Branch + Repo)
         local f_git = io.popen("git branch --show-current 2>/dev/null")
@@ -23,9 +52,11 @@ function M.apply(hilbish, lunacolors, bait)
                     repo_name = f_repo:read("*l") or ""
                     f_repo:close()
                 end
-                table.insert(p, lunacolors.yellow(" (  " .. b .. " : " .. repo_name .. ")"))
+                table.insert(p, lunacolors.brightYellow(" ( " .. b .. " :  " .. repo_name .. ")")) -- 
             end
         end
+
+        -- TODO: manca il modulo con le differenze unstaged, ecc... `{+=}` (metrics)
 
         -- 3. Modulo Fossil (Branch + Repo)
         local cmd_fsl_branch =
@@ -49,7 +80,7 @@ function M.apply(hilbish, lunacolors, bait)
 
         -- 5. Nix Shell
         if os.getenv("IN_NIX_SHELL") then
-            table.insert(p, lunacolors.cyan(" [ Nix Pure ]"))
+            table.insert(p, lunacolors.brightCyan(" [  Nix Impure]"))
         end
 
         -- 6. Rilevamento Linguaggi (Versione ottimizzata: leggiamo la cartella corrente una sola volta)
@@ -60,30 +91,30 @@ function M.apply(hilbish, lunacolors, bait)
             f_ls:close()
 
             if files:match("%.lua\n") or files:match("init%.lua\n") then
-                table.insert(p, lunacolors.blue(" [ Lua ]"))
+                table.insert(p, lunacolors.blue("\x1b[38;5;27m [󰢱 : Lua]\x1b[0m"))
             end
             if files:match("Cargo%.toml\n") or files:match("%.rs\n") then
-                table.insert(p, lunacolors.rgb(255, 135, 0)(" [ Rust ]"))
+                table.insert(p, lunacolors.rgb(255, 135, 0)(" [ Rust]"))
             end
             if files:match("package%.json\n") or files:match("%.js\n") then
-                table.insert(p, lunacolors.green(" [ Nodejs ]"))
+                table.insert(p, lunacolors.green(" [ Nodejs]"))
             end
             if files:match("%.py\n") then
-                table.insert(p, lunacolors.magenta(" [ Python ]"))
+                table.insert(p, lunacolors.magenta(" [ Python]"))
             end
             if files:match("CMakeLists%.txt\n") or files:match("%.c\n") or files:match("%.cpp\n") then
-                table.insert(p, lunacolors.blue(" [ c/cpp ]"))
+                table.insert(p, lunacolors.blue(" [ c/cpp]"))
             end
         end
 
         -- 7. Directory e Carattere finale
-        table.insert(p, lunacolors.magenta(" : "))
-        table.insert(p, lunacolors.cyan("%D"))
+        table.insert(p, lunacolors.bold(lunacolors.brightCyan(" : ")))
+        table.insert(p, lunacolors.cyan(get_formatted_cwd(4))) -- TODO: non funziona bene
 
         -- Seleziona il simbolo corretto in base all'esito del comando precedente
-        local char = lunacolors.green("⊢ ")
+        local char = lunacolors.bold(lunacolors.green("⊢ "))
         if (hilbish.exitCode or 0) ~= 0 then
-            char = lunacolors.red("⊬ ")
+            char = lunacolors.bold(lunacolors.red("⊬ "))
         end
 
         -- Uniamo tutto e mandiamo ad Hilbish
